@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧养老数据可视化大屏</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --primary-blue: #0a1628;
+            --secondary-blue: #0d2137;
+            --accent-cyan: #00d4ff;
+            --accent-blue: #3b82f6;
+            --text-primary: #e0f4ff;
+            --text-secondary: #7dd3fc;
+            --warning-red: #ef4444;
+            --success-green: #10b981;
+            --card-bg: rgba(15, 42, 80, 0.7);
+            --card-border: rgba(59, 130, 246, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 50%, #061020 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header-left, .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .header-right {
+            justify-content: flex-end;
+        }
+
+        .header-center {
+            flex: 2;
+            text-align: center;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--text-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 4px;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+        }
+
+        .datetime {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .date {
+            font-size: 18px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .time {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .weather {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255, 193, 7, 0.15);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .weather-icon {
+            font-size: 24px;
+        }
+
+        .weather-text {
+            color: #ffc107;
+            font-weight: 500;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr 320px;
+            gap: 15px;
+            flex: 1;
+            margin-bottom: 15px;
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            color: var(--accent-cyan);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 4px;
+            height: 16px;
+            background: var(--accent-cyan);
+            border-radius: 2px;
+        }
+
+        .bp-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .bp-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(15, 42, 80, 0.8));
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid var(--card-border);
+        }
+
+        .bp-card.high {
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .bp-card.low {
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .bp-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .bp-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .bp-card.high .bp-value {
+            color: #ef4444;
+        }
+
+        .bp-card.low .bp-value {
+            color: #3b82f6;
+        }
+
+        .bp-unit {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .chart-container {
+            height: 160px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .ecg-alert {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-icon {
+            width: 32px;
+            height: 32px;
+            background: #ef4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .alert-text {
+            font-size: 12px;
+            color: #ef4444;
+        }
+
+        .heart-rate-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .heart-rate-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: #ef4444;
+            line-height: 1;
+        }
+
+        .heart-rate-unit {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .heartbeat-animation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
+            margin: 10px 0;
+        }
+
+        .heartbeat-line {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                #ef4444 10%, 
+                #ef4444 20%, 
+                transparent 25%,
+                transparent 30%,
+                #ef4444 35%,
+                #ef4444 45%,
+                #ef4444 55%,
+                transparent 60%,
+                transparent 100%
+            );
+            animation: heartbeat 1.5s infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(1.5); }
+        }
+
+        .health-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .health-card {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(15, 42, 80, 0.6));
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .health-card-icon {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .health-card-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .health-card-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .model-container {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            position: relative;
+        }
+
+        #three-canvas {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .platform-glow {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 20px;
+            background: radial-gradient(ellipse, rgba(0, 212, 255, 0.4), transparent 70%);
+            animation: platform-pulse 3s infinite;
+        }
+
+        @keyframes platform-pulse {
+            0%, 100% { opacity: 0.5; transform: translateX(-50%) scale(1); }
+            50% { opacity: 1; transform: translateX(-50%) scale(1.2); }
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .person-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(15, 42, 80, 0.6));
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid var(--card-border);
+        }
+
+        .person-avatar {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .person-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .person-name {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .person-detail {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .person-id {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: monospace;
+        }
+
+        .disease-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .disease-tag {
+            padding: 6px 12px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            border-radius: 15px;
+            font-size: 12px;
+            color: #ef4444;
+        }
+
+        .disease-tag.warning {
+            background: rgba(255, 193, 7, 0.15);
+            border-color: rgba(255, 193, 7, 0.4);
+            color: #ffc107;
+        }
+
+        .section-title {
+            font-size: 14px;
+            color: var(--accent-cyan);
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .taboo-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .taboo-tag {
+            padding: 5px 10px;
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 5px;
+            font-size: 12px;
+            color: #ffc107;
+        }
+
+        .interest-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .interest-tag {
+            padding: 5px 10px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 5px;
+            font-size: 12px;
+            color: #10b981;
+        }
+
+        .lab-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .lab-table th {
+            background: rgba(59, 130, 246, 0.2);
+            padding: 8px;
+            text-align: left;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .lab-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--card-border);
+            color: var(--text-primary);
+        }
+
+        .lab-table .abnormal {
+            color: #ef4444;
+        }
+
+        .lab-table .normal {
+            color: #10b981;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn {
+            padding: 12px 40px;
+            background: transparent;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .nav-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            border-color: var(--accent-cyan);
+            color: var(--primary-blue);
+            font-weight: 600;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 42, 80, 0.5);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-blue);
+            border-radius: 3px;
+        }
+
+        @media (max-width: 1400px) {
+            .main-content {
+                grid-template-columns: 250px 1fr 280px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header-left, .header-center, .header-right {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particles-canvas"></canvas>
+    <div class="bg-glow"></div>
+    
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <div class="datetime">
+                    <div class="date">2023.02.28</div>
+                    <div class="time">14:56 广州</div>
+                </div>
+            </div>
+            <div class="header-center">
+                <h1 class="header-title">有一家设计素材铺淘宝店</h1>
+            </div>
+            <div class="header-right">
+                <div class="weather">
+                    <span class="weather-icon">☀️</span>
+                    <span class="weather-text">晴天 22°C</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="panel left-panel">
+                <div class="panel-title">血压监控</div>
+                <div class="bp-cards">
+                    <div class="bp-card high">
+                        <div class="bp-label">最高血压</div>
+                        <div class="bp-value">159</div>
+                        <div class="bp-unit">mmHg</div>
+                    </div>
+                    <div class="bp-card low">
+                        <div class="bp-label">最低血压</div>
+                        <div class="bp-value">58</div>
+                        <div class="bp-unit">mmHg</div>
+                    </div>
+                </div>
+
+                <div class="panel-title">近七天血压趋势</div>
+                <div class="chart-container">
+                    <canvas id="bp-chart" class="chart-canvas"></canvas>
+                </div>
+
+                <div class="ecg-alert">
+                    <div class="alert-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                    </div>
+                    <div class="alert-text">心动过速异常，左心室过缓</div>
+                </div>
+
+                <div class="heart-rate-section">
+                    <div class="panel-title">实时心率</div>
+                    <div class="heart-rate-value">76</div>
+                    <div class="heart-rate-unit">次/分</div>
+                    <div class="heartbeat-animation">
+                        <div class="heartbeat-line"></div>
+                    </div>
+                </div>
+
+                <div class="health-cards">
+                    <div class="health-card">
+                        <div class="health-card-icon">🩸</div>
+                        <div class="health-card-value">95%</div>
+                        <div class="health-card-label">血氧</div>
+                    </div>
+                    <div class="health-card">
+                        <div class="health-card-icon">🍬</div>
+                        <div class="health-card-value">97</div>
+                        <div class="health-card-label">血糖 mmol/L</div>
+                    </div>
+                    <div class="health-card">
+                        <div class="health-card-icon">🌡️</div>
+                        <div class="health-card-value">36.5</div>
+                        <div class="health-card-label">体温 ℃</div>
+                    </div>
+                    <div class="health-card">
+                        <div class="health-card-icon">👟</div>
+                        <div class="health-card-value">1.2W</div>
+                        <div class="health-card-label">步数</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel center-panel">
+                <div class="model-container">
+                    <canvas id="three-canvas"></canvas>
+                    <div class="platform-glow"></div>
+                </div>
+            </div>
+
+            <div class="panel right-panel">
+                <div class="person-card">
+                    <div class="person-avatar">👴</div>
+                    <div class="person-info">
+                        <div class="person-name">李建国</div>
+                        <div class="person-detail">75岁 · 男性</div>
+                        <div class="person-id">ID: 002562</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="section-title">疾病状况</div>
+                    <div class="disease-tags">
+                        <span class="disease-tag">高血压</span>
+                        <span class="disease-tag warning">冠心病</span>
+                        <span class="disease-tag">糖尿病</span>
+                        <span class="disease-tag">低血糖</span>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="section-title">饮食禁忌</div>
+                    <div class="taboo-list">
+                        <span class="taboo-tag">忌咸菜</span>
+                        <span class="taboo-tag">忌海鲜</span>
+                        <span class="taboo-tag">忌生冷</span>
+                        <span class="taboo-tag">忌暴食</span>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="section-title">兴趣爱好</div>
+                    <div class="interest-list">
+                        <span class="interest-tag">太极</span>
+                        <span class="interest-tag">拉二胡</span>
+                        <span class="interest-tag">炒股</span>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="section-title">电子化验单</div>
+                    <table class="lab-table">
+                        <thead>
+                            <tr>
+                                <th>项目名</th>
+                                <th>结果</th>
+                                <th>参考范围</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>血红蛋白</td>
+                                <td class="abnormal">98↓</td>
+                                <td>120-160</td>
+                            </tr>
+                            <tr>
+                                <td>白细胞</td>
+                                <td class="normal">6.5</td>
+                                <td>4-10</td>
+                            </tr>
+                            <tr>
+                                <td>血小板</td>
+                                <td class="normal">220</td>
+                                <td>100-300</td>
+                            </tr>
+                            <tr>
+                                <td>空腹血糖</td>
+                                <td class="abnormal">7.8↑</td>
+                                <td>3.9-6.1</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <button class="nav-btn">老人商城</button>
+            <button class="nav-btn active">健康监测</button>
+            <button class="nav-btn">智慧社区</button>
+        </footer>
+    </div>
+
+    <script>
+        // 粒子背景效果
+        const particlesCanvas = document.getElementById('particles-canvas');
+        const pCtx = particlesCanvas.getContext('2d');
+        let particles = [];
+
+        function initParticles() {
+            particlesCanvas.width = window.innerWidth;
+            particlesCanvas.height = window.innerHeight;
+            particles = [];
+            const particleCount = Math.floor((window.innerWidth * window.innerHeight) / 15000);
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * particlesCanvas.width,
+                    y: Math.random() * particlesCanvas.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 2 + 1,
+                    opacity: Math.random() * 0.5 + 0.2
+                });
+            }
+        }
+
+        function animateParticles() {
+            pCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > particlesCanvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > particlesCanvas.height) p.vy *= -1;
+                pCtx.beginPath();
+                pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                pCtx.fillStyle = `rgba(0, 212, 255, ${p.opacity})`;
+                pCtx.fill();
+            });
+
+            // 连接相近的粒子
+            particles.forEach((p1, i) => {
+                particles.slice(i + 1).forEach(p2 => {
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100) {
+                        pCtx.beginPath();
+                        pCtx.moveTo(p1.x, p1.y);
+                        pCtx.lineTo(p2.x, p2.y);
+                        pCtx.strokeStyle = `rgba(0, 212, 255, ${0.1 * (1 - dist / 100)})`;
+                        pCtx.stroke();
+                    }
+                });
+            });
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+        window.addEventListener('resize', initParticles);
+
+        // 血压折线图
+        const bpCanvas = document.getElementById('bp-chart');
+        const bpCtx = bpCanvas.getContext('2d');
+
+        function drawBPChart() {
+            const rect = bpCanvas.parentElement.getBoundingClientRect();
+            bpCanvas.width = rect.width;
+            bpCanvas.height = rect.height;
+
+            const data = {
+                high: [145, 152, 148, 159, 155, 150, 159],
+                low: [85, 88, 82, 58, 80, 75, 58],
+                days: ['02/22', '02/23', '02/24', '02/25', '02/26', '02/27', '02/28']
+            };
+
+            const padding = { top: 20, right: 20, bottom: 30, left: 40 };
+            const chartWidth = bpCanvas.width - padding.left - padding.right;
+            const chartHeight = bpCanvas.height - padding.top - padding.bottom;
+
+            const maxVal = 180;
+            const minVal = 40;
+
+            bpCtx.clearRect(0, 0, bpCanvas.width, bpCanvas.height);
+
+            // 绘制网格
+            bpCtx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
+            bpCtx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding.top + (chartHeight / 4) * i;
+                bpCtx.beginPath();
+                bpCtx.moveTo(padding.left, y);
+                bpCtx.lineTo(bpCanvas.width - padding.right, y);
+                bpCtx.stroke();
+            }
+
+            // 绘制低压线
+            bpCtx.strokeStyle = '#3b82f6';
+            bpCtx.lineWidth = 2;
+            bpCtx.beginPath();
+            data.low.forEach((val, i) => {
+                const x = padding.left + (chartWidth / (data.days.length - 1)) * i;
+                const y = padding.top + chartHeight - ((val - minVal) / (maxVal - minVal)) * chartHeight;
+                if (i === 0) bpCtx.moveTo(x, y);
+                else bpCtx.lineTo(x, y);
+            });
+            bpCtx.stroke();
+
+            // 绘制高压线
+            bpCtx.strokeStyle = '#ef4444';
+            bpCtx.lineWidth = 2;
+            bpCtx.beginPath();
+            data.high.forEach((val, i) => {
+                const x = padding.left + (chartWidth / (data.days.length - 1)) * i;
+                const y = padding.top + chartHeight - ((val - minVal) / (maxVal - minVal)) * chartHeight;
+                if (i === 0) bpCtx.moveTo(x, y);
+                else bpCtx.lineTo(x, y);
+            });
+            bpCtx.stroke();
+
+            // 绘制数据点
+            data.high.forEach((val, i) => {
+                const x = padding.left + (chartWidth / (data.days.length - 1)) * i;
+                const y = padding.top + chartHeight - ((val - minVal) / (maxVal - minVal)) * chartHeight;
+                bpCtx.beginPath();
+                bpCtx.arc(x, y, 4, 0, Math.PI * 2);
+                bpCtx.fillStyle = '#ef4444';
+                bpCtx.fill();
+            });
+
+            data.low.forEach((val, i) => {
+                const x = padding.left + (chartWidth / (data.days.length - 1)) * i;
+                const y = padding.top + chartHeight - ((val - minVal) / (maxVal - minVal)) * chartHeight;
+                bpCtx.beginPath();
+                bpCtx.arc(x, y, 4, 0, Math.PI * 2);
+                bpCtx.fillStyle = '#3b82f6';
+                bpCtx.fill();
+            });
+
+            // 绘制X轴标签
+            bpCtx.fillStyle = '#7dd3fc';
+            bpCtx.font = '10px Noto Sans SC';
+            bpCtx.textAlign = 'center';
+            data.days.forEach((day, i) => {
+                const x = padding.left + (chartWidth / (data.days.length - 1)) * i;
+                bpCtx.fillText(day, x, bpCanvas.height - 5);
+            });
+
+            // 图例
+            bpCtx.font = '11px Noto Sans SC';
+            bpCtx.fillStyle = '#ef4444';
+            bpCtx.fillText('高压', bpCanvas.width - 60, 15);
+            bpCtx.fillStyle = '#3b82f6';
+            bpCtx.fillText('低压', bpCanvas.width - 20, 15);
+        }
+
+        drawBPChart();
+        window.addEventListener('resize', drawBPChart);
+
+        // Three.js 3D人体模型
+        const threeCanvas = document.getElementById('three-canvas');
+        const container = threeCanvas.parentElement;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true, antialias: true });
+        
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        camera.position.set(0, 0, 5);
+        camera.lookAt(0, 0, 0);
+
+        // 创建低多边形人体模型
+        function createHumanModel() {
+            const group = new THREE.Group();
+
+            const bodyMaterial = new THREE.MeshPhongMaterial({
+                color: 0x1e90ff,
+                emissive: 0x0066cc,
+                emissiveIntensity: 0.3,
+                transparent: true,
+                opacity: 0.7,
+                flatShading: true
+            });
+
+            const outlineMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00d4ff,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+
+            // 头部
+            const headGeo = new THREE.IcosahedronGeometry(0.35, 1);
+            const head = new THREE.Mesh(headGeo, bodyMaterial);
+            head.position.y = 1.6;
+            group.add(head);
+
+            const headOutline = new THREE.Mesh(headGeo, outlineMaterial);
+            headOutline.position.copy(head.position);
+            headOutline.scale.multiplyScalar(1.05);
+            group.add(headOutline);
+
+            // 颈部
+            const neckGeo = new THREE.CylinderGeometry(0.12, 0.15, 0.2, 6);
+            const neck = new THREE.Mesh(neckGeo, bodyMaterial);
+            neck.position.y = 1.25;
+            group.add(neck);
+
+            // 躯干
+            const torsoGeo = new THREE.CylinderGeometry(0.35, 0.28, 1.0, 6);
+            const torso = new THREE.Mesh(torsoGeo, bodyMaterial);
+            torso.position.y = 0.65;
+            group.add(torso);
+
+            const torsoOutline = new THREE.Mesh(torsoGeo, outlineMaterial);
+            torsoOutline.position.copy(torso.position);
+            torsoOutline.scale.multiplyScalar(1.03);
+            group.add(torsoOutline);
+
+            // 肩膀
+            const shoulderGeo = new THREE.BoxGeometry(1.0, 0.15, 0.2);
+            const shoulders = new THREE.Mesh(shoulderGeo, bodyMaterial);
+            shoulders.position.y = 1.1;
+            group.add(shoulders);
+
+            // 手臂
+            const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.7, 6);
+            
+            const leftArm = new THREE.Mesh(armGeo, bodyMaterial);
+            leftArm.position.set(-0.5, 0.7, 0);
+            leftArm.rotation.z = 0.15;
+            group.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeo, bodyMaterial);
+            rightArm.position.set(0.5, 0.7, 0);
+            rightArm.rotation.z = -0.15;
+            group.add(rightArm);
+
+            // 前臂
+            const forearmGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6);
+            
+            const leftForearm = new THREE.Mesh(forearmGeo, bodyMaterial);
+            leftForearm.position.set(-0.55, 0.15, 0);
+            leftForearm.rotation.z = 0.15;
+            group.add(leftForearm);
+
+            const rightForearm = new THREE.Mesh(forearmGeo, bodyMaterial);
+            rightForearm.position.set(0.55, 0.15, 0);
+            rightForearm.rotation.z = -0.15;
+            group.add(rightForearm);
+
+            // 髋部
+            const hipGeo = new THREE.CylinderGeometry(0.28, 0.25, 0.3, 6);
+            const hips = new THREE.Mesh(hipGeo, bodyMaterial);
+            hips.position.y = 0.0;
+            group.add(hips);
+
+            // 腿部
+            const legGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+            
+            const leftLeg = new THREE.Mesh(legGeo, bodyMaterial);
+            leftLeg.position.set(-0.15, -0.6, 0);
+            group.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeo, bodyMaterial);
+            rightLeg.position.set(0.15, -0.6, 0);
+            group.add(rightLeg);
+
+            // 小腿
+            const calfGeo = new THREE.CylinderGeometry(0.07, 0.09, 0.7, 6);
+            
+            const leftCalf = new THREE.Mesh(calfGeo, bodyMaterial);
+            leftCalf.position.set(-0.15, -1.35, 0);
+            group.add(leftCalf);
+
+            const rightCalf = new THREE.Mesh(calfGeo, bodyMaterial);
+            rightCalf.position.set(0.15, -1.35, 0);
+            group.add(rightCalf);
+
+            return group;
+        }
+
+        const humanModel = createHumanModel();
+        humanModel.position.y = -0.2;
+        scene.add(humanModel);
+
+        // 发光平台
+        const platformGeo = new THREE.RingGeometry(0.8, 1.0, 32);
+        const platformMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00d4ff,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide
+        });
+        const platform = new THREE.Mesh(platformGeo, platformMaterial);
+        platform.rotation.x = -Math.PI / 2;
+        platform.position.y = -1.8;
+        scene.add(platform);
+
+        // 外部光圈
+        const outerRingGeo = new THREE.RingGeometry(1.0, 1.1, 64);
+        const outerRingMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00d4ff,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        const outerRing = new THREE.Mesh(outerRingGeo, outerRingMaterial);
+        outerRing.rotation.x = -Math.PI / 2;
+        outerRing.position.y = -1.79;
+        scene.add(outerRing);
+
+        // 灯光
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const pointLight = new THREE.PointLight(0x00d4ff, 1, 10);
+        pointLight.position.set(0, 2, 2);
+        scene.add(pointLight);
+
+        // 动画循环
+        let rotationSpeed = 0.005;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+
+            humanModel.rotation.y += rotationSpeed;
+
+            const time = Date.now() * 0.001;
+            platform.material.opacity = 0.3 + Math.sin(time * 2) * 0.2;
+            outerRing.material.opacity = 0.2 + Math.sin(time * 3) * 0.1;
+            outerRing.rotation.z = time * 0.5;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+
+        // 心率动画波动
+        const heartRateValues = document.querySelector('.heart-rate-value');
+        setInterval(() => {
+            const baseValue = 76;
+            const fluctuation = Math.random() * 4 - 2;
+            heartRateValues.textContent = Math.round(baseValue + fluctuation);
+        }, 2000);
+    </script>
+</body>
+</html>
